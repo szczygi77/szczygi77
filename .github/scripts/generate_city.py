@@ -27,18 +27,18 @@ from pathlib import Path
 USER = os.environ.get("CITY_USER", "szczygi77")
 OUT = Path(os.environ.get("CITY_OUT", "dist/contribution-city.svg"))
 
-WIDTH, HEIGHT = 1200, 740
+WIDTH, HEIGHT = 1200, 812
 WEEKS, DAYS = 53, 7
 
 # Oblique "isometric" axes: one step along a week / along a weekday.
 UX, UY = 18.5, 4.6     # week axis -> right, slightly down
 VX, VY = -12.0, 7.6    # day axis  -> left, down
-GAP = 0.15             # street width (fraction of a cell)
-MAX_H = 150.0          # tallest tower in px
-BASE_H = 9.0           # height of a 1-contribution building
+GAP = 0.10             # street width (fraction of a cell)
+MAX_H = 295.0          # tallest tower in px
+BASE_H = 20.0          # height of a 1-contribution building
 
 ORIGIN_X = WIDTH / 2 - (WEEKS * UX + DAYS * VX) / 2
-ORIGIN_Y = 248.0
+ORIGIN_Y = 318.0
 
 FONT = "ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
 TEXT, MUTED, DIM = "#eef1f5", "#7b838e", "#3a4049"
@@ -280,9 +280,9 @@ def building(w, d, count, maximum, rng):
     out: list[str] = ['<g>']
 
     # Tiered towers (setbacks) for taller buildings, a bit of variety.
-    if h > 75 and rng.random() < 0.8:
+    if h > 130 and rng.random() < 0.8:
         tiers = [(0, 0.6, 0.0), (0.6, 0.85, 0.09), (0.85, 1.0, 0.18)]
-    elif h > 40 and rng.random() < 0.6:
+    elif h > 70 and rng.random() < 0.6:
         tiers = [(0, 0.78, 0.0), (0.78, 1.0, 0.11)]
     else:
         tiers = [(0, 1.0, 0.0)]
@@ -388,7 +388,7 @@ def render(grid, st, first_date: dt.date) -> str:
 
     # Stars (upper sky only)
     for _ in range(90):
-        x, y = rng.uniform(24, WIDTH - 24), rng.uniform(24, 260)
+        x, y = rng.uniform(24, WIDTH - 24), rng.uniform(24, 300)
         if y < 125 and (x < 560 or x > 930):   # keep the header clean
             continue
         r = rng.choice((.35, .5, .5, .7, .9, 1.2))
@@ -431,8 +431,8 @@ def render(grid, st, first_date: dt.date) -> str:
                  f'type="rotate" values="{a0} {x:.0f} {y:.0f};{a1} {x:.0f} '
                  f'{y:.0f};{a0} {x:.0f} {y:.0f}" dur="{dur}s" '
                  f'repeatCount="indefinite"/>'
-                 f'<polygon points="{x:.0f},{y:.0f} {x - 26:.0f},{y - 330:.0f} '
-                 f'{x + 26:.0f},{y - 330:.0f}" fill="url(#beam)"/></g>')
+                 f'<polygon points="{x:.0f},{y:.0f} {x - 26:.0f},{y - 420:.0f} '
+                 f'{x + 26:.0f},{y - 420:.0f}" fill="url(#beam)"/></g>')
 
     # Ground slab: thickness, glass top, street grid
     t = 9
@@ -536,7 +536,7 @@ def render(grid, st, first_date: dt.date) -> str:
             seen = day.month
 
     # Slow light sweep across the scene
-    p.append(f'<rect x="-320" y="100" width="280" height="500" '
+    p.append(f'<rect x="-320" y="100" width="280" height="580" '
              f'fill="url(#sweep)"><animate attributeName="x" '
              f'values="-320;{WIDTH + 40}" dur="16s" '
              f'repeatCount="indefinite"/></rect>')
