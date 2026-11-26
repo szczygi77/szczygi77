@@ -10,7 +10,7 @@
 
 <p>
   <img
-    src="https://raw.githubusercontent.com/szczygi77/szczygi77/main/dist/contribution-city.svg"
+    src="https://raw.githubusercontent.com/szczygi77/szczygi77/main/dist/contribution-city.svg?v=2"
     alt="Animated monochrome 3D isometric city representing szczygi77's GitHub activity"
     width="100%"
   />
