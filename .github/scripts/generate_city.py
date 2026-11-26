@@ -27,18 +27,36 @@ from pathlib import Path
 USER = os.environ.get("CITY_USER", "szczygi77")
 OUT = Path(os.environ.get("CITY_OUT", "dist/contribution-city.svg"))
 
-WIDTH, HEIGHT = 1200, 812
+WIDTH, HEIGHT = 1200, 930
 WEEKS, DAYS = 53, 7
 
-# Oblique "isometric" axes: one step along a week / along a weekday.
-UX, UY = 18.5, 4.6     # week axis -> right, slightly down
-VX, VY = -12.0, 7.6    # day axis  -> left, down
-GAP = 0.10             # street width (fraction of a cell)
-MAX_H = 295.0          # tallest tower in px
-BASE_H = 20.0          # height of a 1-contribution building
+# The year is split into districts (bands) placed one behind another:
+# the older half in front, the most recent half at the back.
+BANDS = 2
+COLS = math.ceil(WEEKS / BANDS)          # weeks per district
+ROAD = 1.3                               # boulevard between districts
+DEPTH = BANDS * DAYS + (BANDS - 1) * ROAD
 
-ORIGIN_X = WIDTH / 2 - (WEEKS * UX + DAYS * VX) / 2
-ORIGIN_Y = 318.0
+# Oblique "isometric" axes: one step along a week / along a weekday.
+UX, UY = 29.6, 7.36    # week axis -> right, slightly down
+VX, VY = -19.2, 12.16  # day axis  -> left, down
+GAP = 0.10             # street width (fraction of a cell)
+MAX_H = 285.0          # tallest tower in px
+BASE_H = 24.0          # height of a 1-contribution building
+
+ORIGIN_X = WIDTH / 2 - (COLS * UX + DEPTH * VX) / 2
+ORIGIN_Y = 392.0
+
+
+def band_row(band: int) -> float:
+    """Row offset of a district (band 0 = oldest, drawn in front)."""
+    return (BANDS - 1 - band) * (DAYS + ROAD)
+
+
+def cell(w: int, d: int) -> tuple[float, float]:
+    """Calendar (week, weekday) -> display (col, row)."""
+    return w % COLS, band_row(w // COLS) + d
+
 
 FONT = "ui-monospace,SFMono-Regular,Menlo,Consolas,monospace"
 TEXT, MUTED, DIM = "#eef1f5", "#7b838e", "#3a4049"
@@ -219,10 +237,10 @@ def box(a, b, c, e, z0, z1, level, rng, windows=True) -> list[str]:
     out = [poly(front, f"url(#f{k})"), poly(side, f"url(#s{k})"),
            poly(top, grey(level, 0x5c, 0xe8))]
 
-    if windows and z1 - z0 > 12:
-        floor_h = 6.2
+    if windows and z1 - z0 > 13:
+        floor_h = 7.0
         floors = int((z1 - z0 - 7) // floor_h)
-        for face, cols in (("front", 3), ("side", 2)):
+        for face, cols in (("front", 4), ("side", 3)):
             width = 0.8 / cols
             for f in range(floors):
                 zf = z0 + 4 + f * floor_h
@@ -362,8 +380,8 @@ def defs() -> str:
  <stop offset="1" stop-color="#fff" stop-opacity="0"/>
 </linearGradient>""")
     pad = 0.55
-    ground = [P(-pad, -pad), P(WEEKS + pad, -pad), P(WEEKS + pad, DAYS + pad),
-              P(-pad, DAYS + pad)]
+    ground = [P(-pad, -pad), P(COLS + pad, -pad), P(COLS + pad, DEPTH + pad),
+              P(-pad, DEPTH + pad)]
     g.append(f'<clipPath id="groundClip"><polygon points="{pts(ground)}"/>'
              f'</clipPath>')
     g.append('</defs>')
@@ -409,33 +427,34 @@ def render(grid, st, first_date: dt.date) -> str:
              '</circle></g>')
 
     # Horizon glow behind the skyline
-    cx, cy = P(WEEKS / 2, DAYS / 2)
-    p.append(f'<ellipse cx="{cx:.0f}" cy="{cy - 70:.0f}" rx="620" ry="230" '
+    cx, cy = P(COLS / 2, DEPTH / 2)
+    p.append(f'<ellipse cx="{cx:.0f}" cy="{cy - 90:.0f}" rx="640" ry="260" '
              f'fill="url(#horizon)"/>')
 
-    # Pre-compute heights for searchlights
-    heights = []
+    # All lots in display coordinates (col, row, count), painter-sorted.
+    cells = []
     for w in range(WEEKS):
         for d in range(DAYS):
-            c = grid[w][d]
-            if c:
-                heights.append((height_for(c, maximum)[0], w, d))
-    heights.sort(reverse=True)
+            if grid[w][d] is not None:
+                col, row = cell(w, d)
+                cells.append((col, row, grid[w][d]))
+    cells.sort(key=lambda t: (t[0] + t[1], t[1]))
 
     # Searchlights sweeping from the two tallest blocks
-    for i, (_, w, d) in enumerate(heights[:2]):
-        x, y = P(w + .5, d + .5)
+    tallest = sorted((c for c in cells if c[2]), key=lambda t: -t[2])[:2]
+    for i, (col, row, _) in enumerate(tallest):
+        x, y = P(col + .5, row + .5)
         a0, a1 = (-22, 16) if i == 0 else (18, -14)
         dur = 17 + i * 5
         p.append(f'<g opacity=".9"><animateTransform attributeName="transform" '
                  f'type="rotate" values="{a0} {x:.0f} {y:.0f};{a1} {x:.0f} '
                  f'{y:.0f};{a0} {x:.0f} {y:.0f}" dur="{dur}s" '
                  f'repeatCount="indefinite"/>'
-                 f'<polygon points="{x:.0f},{y:.0f} {x - 26:.0f},{y - 420:.0f} '
-                 f'{x + 26:.0f},{y - 420:.0f}" fill="url(#beam)"/></g>')
+                 f'<polygon points="{x:.0f},{y:.0f} {x - 30:.0f},{y - 440:.0f} '
+                 f'{x + 30:.0f},{y - 440:.0f}" fill="url(#beam)"/></g>')
 
-    # Ground slab: thickness, glass top, street grid
-    t = 9
+    # Ground slab: thickness, glass top, street grid per district
+    t = 11
     gl = [(x, y + t) for x, y in ground]
     p.append(poly([ground[3], ground[2], gl[2], gl[3]], "#0b0d10"))
     p.append(poly([ground[1], ground[2], gl[2], gl[1]], "#14181d"))
@@ -444,32 +463,38 @@ def render(grid, st, first_date: dt.date) -> str:
              f'{pts([ground[1]])}" fill="none" stroke="#fff" '
              f'stroke-opacity=".22" stroke-width=".8"/>')
     lines = []
-    for w in range(WEEKS + 1):
-        lines.append(f"M{pts([P(w, 0)])}L{pts([P(w, DAYS)])}")
-    for d in range(DAYS + 1):
-        lines.append(f"M{pts([P(0, d)])}L{pts([P(WEEKS, d)])}")
-    p.append(f'<path d="{"".join(lines)}" stroke="#202630" '
-             f'stroke-width=".45" fill="none"/>')
+    for band in range(BANDS):
+        r0 = band_row(band)
+        for c in range(COLS + 1):
+            lines.append(f"M{pts([P(c, r0)])}L{pts([P(c, r0 + DAYS)])}")
+        for d in range(DAYS + 1):
+            lines.append(f"M{pts([P(0, r0 + d)])}L{pts([P(COLS, r0 + d)])}")
+    p.append(f'<path d="{"".join(lines)}" stroke="#222831" '
+             f'stroke-width=".5" fill="none"/>')
+    # Central boulevard lane marking
+    for band in range(BANDS - 1):
+        r = band_row(band + 1) + DAYS + ROAD / 2
+        p.append(f'<path d="M{pts([P(-.3, r)])}L{pts([P(COLS + .3, r)])}" '
+                 f'stroke="#fff" stroke-opacity=".14" stroke-width=".8" '
+                 f'stroke-dasharray="6 7"/>')
 
     # Black-glass reflections, clipped to the ground
     refl = ['<g clip-path="url(#groundClip)">']
-    for w in range(WEEKS):
-        for d in range(DAYS):
-            c = grid[w][d]
-            if not c:
-                continue
-            h = height_for(c, maximum)[0] * 0.45
-            a, b = w + GAP, w + 1 - GAP
-            cc, e = d + GAP, d + 1 - GAP
-            refl.append(poly([P(a, e), P(b, e), P(b, e, -h), P(a, e, -h)],
-                             "url(#refl)"))
-            refl.append(poly([P(b, cc), P(b, e), P(b, e, -h), P(b, cc, -h)],
-                             "url(#refl)", ' opacity=".7"'))
+    for col, row, c in cells:
+        if not c:
+            continue
+        h = height_for(c, maximum)[0] * 0.45
+        a, b = col + GAP, col + 1 - GAP
+        cc, e = row + GAP, row + 1 - GAP
+        refl.append(poly([P(a, e), P(b, e), P(b, e, -h), P(a, e, -h)],
+                         "url(#refl)"))
+        refl.append(poly([P(b, cc), P(b, e), P(b, e, -h), P(b, cc, -h)],
+                         "url(#refl)", ' opacity=".7"'))
     refl.append('</g>')
     p.append("".join(refl))
 
     # Traffic on interior avenues (drawn below buildings)
-    def car(s, e_, dur, delay, r=0.9, op=0.75):
+    def car(s, e_, dur, delay, r=1.1, op=0.75):
         x0, y0 = P(*s)
         x1, y1 = P(*e_)
         return (f'<circle r="{r}" fill="#fff" opacity="{op}">'
@@ -477,66 +502,76 @@ def render(grid, st, first_date: dt.date) -> str:
                 f'dur="{dur:.0f}s" begin="-{delay:.0f}s" '
                 f'repeatCount="indefinite"/></circle>')
 
-    for i in range(7):
-        d = rng.randint(1, DAYS - 1)
+    avenues = [band_row(b) + d for b in range(BANDS) for d in range(1, DAYS)]
+    avenues += [band_row(b + 1) + DAYS + ROAD * f for b in range(BANDS - 1)
+                for f in (.3, .7)] * 2
+    for i in range(12):
+        r = rng.choice(avenues)
         fwd = rng.random() < .5
-        s, e_ = ((-.3, d), (WEEKS + .3, d)) if fwd else ((WEEKS + .3, d),
-                                                        (-.3, d))
-        p.append(car(s, e_, rng.uniform(28, 48), rng.uniform(0, 40)))
+        s, e_ = ((-.3, r), (COLS + .3, r)) if fwd else ((COLS + .3, r),
+                                                        (-.3, r))
+        p.append(car(s, e_, rng.uniform(20, 34), rng.uniform(0, 30)))
+
+    # Month labels along the front edge of each district
+    angle = math.degrees(math.atan2(UY, UX))
+    seen = None
+    for w in range(WEEKS):
+        day = first_date + dt.timedelta(weeks=w)
+        col, _ = cell(w, 0)
+        band = w // COLS
+        changes = day.month != seen
+        if col == 0 and not changes:
+            # Label the district start only if no month begins right after.
+            soon = [(first_date + dt.timedelta(weeks=w + k)).month
+                    for k in (1, 2, 3)]
+            changes = all(m == day.month for m in soon)
+        if changes and col < COLS - 1:
+            front = band_row(band) + DAYS
+            x, y = P(col + .12, front + .95)
+            p.append(text(x, y, day.strftime("%b").upper(), 10, MUTED,
+                          spacing=1.5,
+                          extra=f' transform="rotate({angle:.1f} {x:.1f} '
+                                f'{y:.1f})"'))
+            tx, ty = P(col, front + .12)
+            p.append(f'<path d="M{tx:.1f},{ty:.1f}l{VX * .22:.1f},'
+                     f'{VY * .22:.1f}" stroke="{MUTED}" stroke-width=".7"/>')
+        seen = day.month
+
 
     # Buildings, back to front (painter's algorithm)
     tops = []
-    for diag in range(WEEKS + DAYS - 1):
-        for w in range(WEEKS):
-            d = diag - w
-            if 0 <= d < DAYS and grid[w][d] is not None:
-                svg, info = building(w, d, grid[w][d], maximum, rng)
-                p.append(svg)
-                if info:
-                    tops.append(info)
+    for col, row, c in cells:
+        svg, info = building(col, row, c, maximum, rng)
+        p.append(svg)
+        if info:
+            tops.append(info)
 
     # Front avenue traffic (in front of everything)
-    for s, e_, dur, delay in (((-.4, DAYS + .3), (WEEKS + .4, DAYS + .3), 30, 0),
-                              ((WEEKS + .4, DAYS + .3), (-.4, DAYS + .3), 36, 11),
-                              ((-.4, DAYS + .3), (WEEKS + .4, DAYS + .3), 30, 17),
-                              ((WEEKS + .3, -.4), (WEEKS + .3, DAYS + .4), 10, 3)):
-        p.append(car(s, e_, dur, delay, r=1.1, op=.9))
+    F = DEPTH + .35
+    for s, e_, dur, delay in (((-.4, F), (COLS + .4, F), 22, 0),
+                              ((COLS + .4, F), (-.4, F), 26, 8),
+                              ((-.4, F), (COLS + .4, F), 22, 13),
+                              ((COLS + .35, -.4), (COLS + .35, F), 14, 3)):
+        p.append(car(s, e_, dur, delay, r=1.3, op=.9))
 
     # Beacons + antennas on the tallest towers
     for i, (roof, h, level, _) in enumerate(
             sorted(tops, key=lambda x: -x[1])[:5]):
         cx = sum(x for x, _ in roof) / 4
         cy = sum(y for _, y in roof) / 4
-        top_y = cy - 12 - (4 if i == 0 else 0)
+        top_y = cy - 14 - (5 if i == 0 else 0)
         dur = 2.2 + i * 0.37
         p.append(f'<path d="M{cx:.1f},{cy:.1f}V{top_y:.1f}" stroke="#c9d0d8" '
-                 f'stroke-width=".8"/>')
-        p.append(f'<circle cx="{cx:.1f}" cy="{top_y:.1f}" r="9" '
+                 f'stroke-width=".9"/>')
+        p.append(f'<circle cx="{cx:.1f}" cy="{top_y:.1f}" r="10" '
                  f'fill="url(#glow)" opacity=".1"><animate '
                  f'attributeName="opacity" values=".05;.55;.05" '
                  f'dur="{dur:.2f}s" repeatCount="indefinite"/></circle>')
-        p.append(f'<circle cx="{cx:.1f}" cy="{top_y:.1f}" r="1.3" '
+        p.append(f'<circle cx="{cx:.1f}" cy="{top_y:.1f}" r="1.5" '
                  f'fill="#fff"/>')
 
-    # Month labels along the front edge
-    seen = None
-    for w in range(WEEKS):
-        day = first_date + dt.timedelta(weeks=w)
-        if day.month != seen and w < WEEKS - 2:
-            if seen is not None or day.day <= 7:
-                x, y = P(w + .1, DAYS + 1.25)
-                p.append(text(x, y, day.strftime("%b").upper(), 9.5, MUTED,
-                              spacing=1.5,
-                              extra=f' transform="rotate(13.9 {x:.1f} '
-                                    f'{y:.1f})"'))
-                tx, ty = P(w, DAYS + .55)
-                p.append(f'<path d="M{tx:.1f},{ty:.1f}l{VX * .25:.1f},'
-                         f'{VY * .25:.1f}" stroke="{MUTED}" '
-                         f'stroke-width=".6"/>')
-            seen = day.month
-
     # Slow light sweep across the scene
-    p.append(f'<rect x="-320" y="100" width="280" height="580" '
+    p.append(f'<rect x="-320" y="100" width="280" height="720" '
              f'fill="url(#sweep)"><animate attributeName="x" '
              f'values="-320;{WIDTH + 40}" dur="16s" '
              f'repeatCount="indefinite"/></rect>')
