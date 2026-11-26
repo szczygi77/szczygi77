@@ -2,7 +2,7 @@
 
 <h1>SZCZYGI77</h1>
 
-<p><samp>DEVELOPER · BUILDER · DIGITAL EXPLORER</samp></p>
+<p><samp>Ja to zwykły chłopak ze skromnego miasta</samp></p>
 
 <br/>
 
