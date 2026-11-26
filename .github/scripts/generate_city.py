@@ -525,7 +525,7 @@ def render(grid, st, first_date: dt.date) -> str:
         if day.month != seen and w < WEEKS - 2:
             if seen is not None or day.day <= 7:
                 x, y = P(w + .1, DAYS + 1.25)
-                p.append(text(x, y, day.strftime("%b").upper(), 7.5, MUTED,
+                p.append(text(x, y, day.strftime("%b").upper(), 9.5, MUTED,
                               spacing=1.5,
                               extra=f' transform="rotate(13.9 {x:.1f} '
                                     f'{y:.1f})"'))
@@ -557,11 +557,11 @@ def render(grid, st, first_date: dt.date) -> str:
                  f'stroke-width=".8"/>')
 
     L, R = 58, WIDTH - 58
-    p.append(text(L, 62, "GITHUB.COM/SZCZYGI77", 8.5, MUTED, spacing=3))
-    p.append(text(L, 90, "SZCZYGI77 / DIGITAL CITY", 21, TEXT, spacing=6,
+    p.append(text(L, 60, "GITHUB.COM/SZCZYGI77", 10.5, MUTED, spacing=3))
+    p.append(text(L, 90, "SZCZYGI77 / DIGITAL CITY", 23, TEXT, spacing=6,
                   weight=500))
-    p.append(text(L, 110, "A YEAR OF BUILDING THINGS · 1 DAY = 1 BLOCK",
-                  8.5, MUTED, spacing=3))
+    p.append(text(L, 112, "A YEAR OF BUILDING THINGS · 1 DAY = 1 BLOCK",
+                  10.5, MUTED, spacing=3))
 
     stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y.%m.%d")
     p.append(f'<circle cx="{R - 140}" cy="59" r="2.4" fill="#fff">'
@@ -570,10 +570,10 @@ def render(grid, st, first_date: dt.date) -> str:
     p.append(f'<circle cx="{R - 140}" cy="59" r="6" fill="url(#glow)" '
              f'opacity=".35"><animate attributeName="r" values="3;8;3" '
              f'dur="2s" repeatCount="indefinite"/></circle>')
-    p.append(text(R - 130, 62, "LIVE DATA", 8.5, TEXT, spacing=3))
-    p.append(text(R, 90, f"UPDATED {stamp}", 8.5, MUTED, "end", 3))
+    p.append(text(R - 130, 62, "LIVE DATA", 10.5, TEXT, spacing=3))
+    p.append(text(R, 90, f"UPDATED {stamp}", 10.5, MUTED, "end", 3))
     p.append(text(R, 110, f"{len(values)} DAYS · {sum(values):,} EVENTS"
-                  .replace(",", " "), 8.5, MUTED, "end", 3))
+                  .replace(",", " "), 10.5, MUTED, "end", 3))
 
     # Bottom rule + stats
     p.append(f'<rect x="{L}" y="{HEIGHT - 122}" width="{R - L}" height=".8" '
@@ -583,11 +583,11 @@ def render(grid, st, first_date: dt.date) -> str:
                   ("BEST DAY", st["best"]),
                   ("LONGEST STREAK", f"{st['longest']}d"),
                   ("CURRENT STREAK", f"{st['current']}d")]
-    col = 150
+    col = 162
     for i, (label, value) in enumerate(stats_list):
         x = L + i * col
-        p.append(text(x, HEIGHT - 82, value, 22, TEXT, weight=500))
-        p.append(text(x, HEIGHT - 63, label, 7.5, MUTED, spacing=2.5))
+        p.append(text(x, HEIGHT - 82, value, 26, TEXT, weight=500))
+        p.append(text(x, HEIGHT - 61, label, 9.5, MUTED, spacing=2.5))
         if i:
             p.append(f'<rect x="{x - 18}" y="{HEIGHT - 100}" width=".6" '
                      f'height="40" fill="#fff" opacity=".1"/>')
@@ -595,7 +595,7 @@ def render(grid, st, first_date: dt.date) -> str:
     # Legend: LESS ▮▮▮▮ MORE as tiny isometric blocks
     lx = R - 170
     ly = HEIGHT - 66
-    p.append(text(lx - 8, ly, "LESS", 7.5, MUTED, "end", 2.5))
+    p.append(text(lx - 8, ly, "LESS", 9.5, MUTED, "end", 2.5))
     for i, lv in enumerate((0.0, .25, .5, .75, 1.0)):
         x0 = lx + 8 + i * 22
         hh = 3 + lv * 26
@@ -609,10 +609,10 @@ def render(grid, st, first_date: dt.date) -> str:
         k = bucket(lv)
         p.append(poly(front, f"url(#f{k})") + poly(side, f"url(#s{k})") +
                  poly(top, grey(lv, 0x5c, 0xe8)))
-    p.append(text(lx + 8 + 5 * 22 + 4, ly, "MORE", 7.5, MUTED, spacing=2.5))
+    p.append(text(lx + 8 + 5 * 22 + 4, ly, "MORE", 9.5, MUTED, spacing=2.5))
 
     p.append(text(WIDTH / 2, HEIGHT - 34, "EVERY COMMIT BUILDS SOMETHING",
-                  8.5, "#5d646e", "middle", 5))
+                  10.5, "#5d646e", "middle", 5))
     p.append("</svg>")
     return "\n".join(p)
 
